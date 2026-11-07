@@ -17,3 +17,6 @@
 
 /* Build 026: tap the playing bar to open what's playing */
 .playing-name{cursor:pointer}.playing-name::after{content:"  \203A";font-weight:900;opacity:.8}
+
+/* Build 027 */
+.ft-hint{margin:6px 2px 10px;font-size:12.5px}
