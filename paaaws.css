@@ -14,3 +14,6 @@
 .secs-ok.saved{color:#0b2a12;background:#4ade80!important;border-color:#4ade80!important}
 .steps li.playing-now{border-color:#f5c248;background:linear-gradient(90deg,#3a2a0c,var(--card));box-shadow:0 0 14px #f5c24866;position:relative}
 .steps li.playing-now::before{content:"\25B6  ON";position:absolute;top:-9px;left:10px;font-size:10px;font-weight:900;letter-spacing:.06em;color:#17110a;background:#f5c248;border-radius:6px;padding:1px 6px}
+
+/* Build 026: tap the playing bar to open what's playing */
+.playing-name{cursor:pointer}.playing-name::after{content:"  \203A";font-weight:900;opacity:.8}
