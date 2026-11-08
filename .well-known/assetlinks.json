@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "uk.co.paaawspack.app",
+        "sha256_cert_fingerprints": ["3C:E9:0B:78:5D:CF:35:1B:66:41:0D:AB:56:C6:2D:13:96:78:0A:A8:BA:8C:A4:A3:48:7B:2F:9B:8B:48:9F:FB"]
+      }
+    }]
