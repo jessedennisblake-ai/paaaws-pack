@@ -1,8 +1,11 @@
 [{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "uk.co.paaawspack.app",
-        "sha256_cert_fingerprints": ["3C:E9:0B:78:5D:CF:35:1B:66:41:0D:AB:56:C6:2D:13:96:78:0A:A8:BA:8C:A4:A3:48:7B:2F:9B:8B:48:9F:FB"]
-      }
-    }]
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "uk.co.paaawspack.app",
+    "sha256_cert_fingerprints": [
+      "F5:73:E1:1A:16:19:48:AF:10:CC:4C:B3:67:E7:E3:4B:82:45:41:D0:93:65:D8:BC:70:BB:EF:57:1B:D7:9F:A8",
+      "3C:E9:0B:78:5D:CF:35:1B:66:41:0D:AB:56:C6:2D:13:96:78:0A:A8:BA:8C:A4:A3:48:7B:2F:9B:8B:48:9F:FB"
+    ]
+  }
+}]
