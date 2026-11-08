@@ -1,10 +1,10 @@
 // PAAAWS PACK offline support + instant updates.
 // Pages always come fresh from the internet (never an old saved copy), so a new
 // version shows the first time the app opens. Saved copies are only used offline.
-const CACHE = 'paaaws-pack-v30'
+const CACHE = 'paaaws-pack-v31'
 self.addEventListener('install', (e) => {
   self.skipWaiting()
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'])))
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './guide.js', './guide.css'])))
 })
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()))
