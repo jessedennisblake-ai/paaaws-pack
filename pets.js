@@ -4,6 +4,7 @@
   'use strict'
   var ART = window.PAAAWS_PET_ART
   var SLOT = 57                       // the pet's own bag slot: the board plays slots 0-59 only; Media GIF uses 56, Program 31-54, home 0, default 17
+  var MANUAL = [1, 2, 3, 4, 5, 6, 7, 8, 9]
   var EGG_MS = 60 * 1000              // egg hatches in 1 minute (Teddy, 9 Nov)
   var KEYS = ['paaaws-pets-save-a', 'paaaws-pets-save-b']
   var MIN = 60000, HOUR = 3600000, DAY = 86400000
@@ -287,6 +288,7 @@
     '#pp .bagmsg{font-size:11px;color:#aaa;text-align:center;min-height:14px}#pp .toast{position:absolute;left:16px;right:16px;bottom:96px;background:#ffc72c;color:#111;border-radius:12px;padding:12px;font-weight:700;text-align:center;z-index:5}' +
     '#pp .scroll{flex:1;overflow:auto;padding-bottom:16px}#pp .alb{display:flex;gap:12px;align-items:center;margin:8px 16px;padding:12px;border-radius:14px;background:linear-gradient(135deg,#2a1e03,#121216);border:1.5px solid #ffc72c}' +
     '#pp .sheet{top:auto!important;inset:auto 0 0 0;display:block!important;align-items:initial}#pp .btn{height:auto!important;min-height:52px;flex:none!important;display:flex!important;align-items:center;justify-content:center;text-align:center;white-space:normal;font-size:16px!important;box-shadow:none;gap:6px}#pp .btn span{font-size:inherit}#pp .toast{border:0!important;box-shadow:0 8px 24px #0009}#pp .card{display:block!important;gap:0}#pp .row{flex-direction:row!important}#pp .bar{height:7px!important}' +
+    '#pp .gear{font-size:18px}#pp .sect{color:#ffc72c;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:14px 2px 4px}#pp .manual{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;padding:6px 14px;align-items:flex-start}#pp .manual img{flex:0 0 100%;max-width:100%;max-height:calc(100vh - 140px);object-fit:contain;scroll-snap-align:center;border-radius:14px;background:#111}#pp .mdots{text-align:center;color:#aaa;font-size:12px;padding:6px 0 14px}' +
     'body.pp-open .demo-bags{z-index:10000;top:104px;bottom:auto;right:26px}body.pp-backon #root{padding-top:48px}.pp-back{position:fixed;top:6px;right:12px;z-index:9000;display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:20px;border:1.5px solid #ffc72c;background:#14100a;color:#ffc72c;font-weight:800;font-size:14px;box-shadow:0 4px 16px #000c}' +
     '.pets-tile{display:flex;align-items:center;gap:12px;width:100%;margin:10px 0 4px;padding:14px 16px;border-radius:16px;border:2px solid #ffc72c;background:linear-gradient(90deg,#2a1e03,#120d02);color:#fff;text-align:left;box-shadow:0 0 18px #ffc72c55}' +
     '.pets-tile .pets-tile-icon{font-size:30px}.pets-tile strong{color:#ffc72c;font-size:18px;display:block}.pets-tile small{color:#ddd;font-size:12px}'
@@ -376,7 +378,7 @@
 
   function header(title, back) {
     return '<div class="top">' + (back ? '<button class="x" data-go="' + back + '">‹</button>' : '') + '<div class="ttl">' + title + '</div>' +
-      (G.pet && !G.pet.dead && (screen === 'home') ? '<button class="bagbtn" data-act="bagsheet">🎒 ' + G.settings.display + '</button>' : '') +
+      (G.pet && !G.pet.dead && (screen === 'home') ? '<button class="bagbtn" data-act="bagsheet">🎒 ' + G.settings.display + '</button><button class="x gear" data-go="settings" aria-label="Pet settings">⚙️</button>' : '') +
       '<button class="x" data-act="close">✕</button></div>'
   }
   function render() {
@@ -424,7 +426,8 @@
     else if (screen === 'settings') {
       var s = G.settings
       function hm(v) { return String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0') }
-      h = header('⚙️ Grown-up settings', 'home') + '<div class="scroll">' +
+      h = header('⚙️ Pet settings', 'home') + '<div class="scroll">' +
+        '<button class="btn" data-go="manual">📖 How to play</button><div class="sect">Grown-up settings</div>' +
         '<div class="row">🌙 Bedtime<input type="time" data-in="bedStart" value="' + hm(s.bedStart) + '"></div>' +
         '<div class="row">☀️ Wake-up<input type="time" data-in="bedEnd" value="' + hm(s.bedEnd) + '"></div>' +
         '<div class="row">🏫 School nap (weekdays 8:45–3:15)<input type="checkbox" data-in="schoolNap"' + (s.schoolNap ? ' checked' : '') + '></div>' +
@@ -433,6 +436,11 @@
         '<button class="btn ghost" data-act="skip1">🧪 Skip ahead 1 hour</button><button class="btn ghost" data-act="skip24">🧪 Skip ahead 1 day</button>' +
         '<button class="btn ghost" data-act="backup">💾 Save backup file</button><label class="btn ghost" style="text-align:center">📂 Restore backup<input type="file" accept=".json" data-in="restore" style="display:none"></label>' +
         '<button class="btn ghost" data-act="delete" style="color:#ff6b6b;border-color:#ff6b6b">🗑 Delete pet</button></div>'
+    }
+    else if (screen === 'manual') {
+      h = header('📖 How to play', 'settings') + '<div class="manual">' + MANUAL.map(function (n, i) {
+        return '<img src="./pets-manual/page' + n + '.webp" alt="How to play, page ' + (i + 1) + '" loading="' + (i < 2 ? 'eager' : 'lazy') + '">'
+      }).join('') + '</div><div class="mdots">Swipe for more · ' + MANUAL.length + ' pages</div>'
     }
     else if (screen === 'goodbye' && p) {
       var gold = p.dead && p.dead.cause === 'old age' && avg(p.life) >= 85
@@ -448,7 +456,7 @@
     if (sheet === 'play') h += '<div class="shade" data-act="shut"></div><div class="sheet"><button class="btn" data-act="arcade">🕹️ Play a game with ' + esc(p ? p.name : 'your pet') + ' (30 games)</button>' +
       '<button class="btn ghost" data-act="quickplay">🧸 Quick play</button><div class="bagmsg" style="padding:4px 16px">Every game you play gives ' + esc(p ? p.name : 'your pet') + ' a block of happiness.</div></div>'
     if (sheet === 'care') h += '<div class="shade" data-act="shut"></div><div class="sheet"><button class="btn" data-act="medicine">💊 Medicine</button><button class="btn ghost" data-act="cuddle">🤗 Cuddle</button>' +
-      '<button class="btn ghost" data-go="teach">🎓 Teach tricks</button><button class="btn ghost" data-go="album">📖 Memory Album</button><button class="btn ghost" data-go="settings">⚙️ Grown-up settings</button></div>'
+      '<button class="btn ghost" data-go="teach">🎓 Teach tricks</button><button class="btn ghost" data-go="album">📖 Memory Album</button></div>'
     if (sheet === 'bag') h += '<div class="shade" data-act="shut"></div><div class="sheet">' + ['LIVE', 'ROAM', 'SLEEP', 'OFF'].map(function (m) {
       return '<button class="btn' + (G.settings.display === m ? '' : ' ghost') + '" data-mode="' + m + '">' + { LIVE: '▶ LIVE: shows the real state', ROAM: '🐾 ROAM: walks & jumps round the bag', SLEEP: '💤 SLEEP: always shows sleeping', OFF: '🚫 OFF: pet not sent to the bag' }[m] + '</button>'
     }).join('') + '<button class="btn ghost" data-act="sendnow">📤 Send to bag now</button></div>'
