@@ -3,6 +3,16 @@
 (function () {
   'use strict'
   var ART = window.PAAAWS_PET_ART
+  var CHARS = {
+    shazalino: { name: 'Shazalino', word: 'MEOW', icon: '🐱', say: ['Meow!', 'Mew? 🐾', 'Meow meow!'], rub: ['Meow! 💕', 'Purrrr… 😻', 'Mrrrow! ❤️'], cuddle: 'Purrr… ❤️' },
+    pup: { name: 'Pup', word: 'WOOF', icon: '🐶', say: ['Woof!', 'Arf? 🐾', 'Woof woof!'], rub: ['Woof! 💕', 'Happy wag! 🐕', 'Arf arf! ❤️'], cuddle: 'Wag wag… ❤️' },
+    drako: { name: 'Drako', word: 'RAWR', icon: '🐲', say: ['Rawr!', 'Rrr? 🐾', 'Rawr rawr!'], rub: ['Rawr! 💕', 'Happy puff! 🔥', 'Rrrrr… ❤️'], cuddle: 'Rrrr… ❤️' },
+    penny: { name: 'Penny', word: 'WOOF', icon: '🐕', say: ['Woof!', 'Yip? 🐾', 'Woof woof!'], rub: ['Woof! 💕', 'Wiggle wiggle! 🐕', 'Yip yip! ❤️'], cuddle: 'Snuggle… ❤️' },
+    pawbo: { name: 'Pawbo', word: 'BOOP', icon: '🐾', say: ['Boop!', 'Bloop? 🐾', 'Boop boop!'], rub: ['Boop! 💕', 'Wobble wobble! 💛', 'Bloop! ❤️'], cuddle: 'Boop… ❤️' }
+  }
+  function charKey(p) { p = p || G.pet; var k = (p && p.char) || (onb && onb.char) || 'shazalino'; return CHARS[k] ? k : 'shazalino' }
+  function CH(p) { return CHARS[charKey(p)] }
+  function atlasFor(k) { return k === 'shazalino' || !ART.chars || !ART.chars[k] ? ART.atlas : ART.chars[k] }
   var SLOT = 57                       // the pet's own bag slot: the board plays slots 0-59 only; Media GIF uses 56, Program 31-54, home 0, default 17
   var MANUAL = [1, 2, 3, 4, 5, 6, 7, 8, 9]
   var EGG_MS = 60 * 1000              // egg hatches in 1 minute (Teddy, 9 Nov)
@@ -55,9 +65,9 @@
   function seeded(s) { var h = crc32(s); return (h % 10000) / 10000 }
 
   // ---------- pet ----------
-  function newPet(name, sex) {
+  function newPet(name, sex, ch) {
     var t = gameNow()
-    return { id: 'p' + Date.now().toString(36), name: name || 'Shazalino', sex: sex, char: 'shazalino', eggAt: t, hatchedAt: 0, t: t,
+    return { id: 'p' + Date.now().toString(36), name: name || CH({ char: ch }).name, sex: sex, char: ch || 'shazalino', eggAt: t, hatchedAt: 0, t: t,
       activeMin: 0, full: 90, happy: 90, energy: 100, hyg: 100, health: 100, weight: 50, poops: 0, poopClock: 0, unclean: 0,
       sick: false, critMin: 0, starveMin: 0, fullHist: [], lightsOff: false, napUntil: 0, lastCare: t,
       cd: {}, snacks: { day: '', n: 0 }, sc: { baby: [0, 0], child: [0, 0], teen: [0, 0], adult: [0, 0], old: [0, 0] }, life: [0, 0],
@@ -135,7 +145,7 @@
     var days = Math.max(1, Math.round((t - (p.hatchedAt || p.eggAt)) / DAY))
     var form = p.forms.adult || p.forms.teen || p.forms.child || formFor(avg(p.life))
     var golden = cause === 'old age' && avg(p.life) >= 85
-    G.album.unshift({ n: G.album.length + 1, id: p.id, name: p.name, sex: p.sex, char: 'Shazalino', days: days, form: form, golden: golden })
+    G.album.unshift({ n: G.album.length + 1, id: p.id, name: p.name, sex: p.sex, char: CHARS[charKey(p)].name, days: days, form: form, golden: golden })
     EVENTS.push('died')
   }
   function finishGoodbye() { G.pet = null; save(true); go('newegg') }   // wipes tricks/stats from BOTH save copies
@@ -171,16 +181,19 @@
   // ---------- art ----------
   var SHEETS = {}, ready = false
   function loadArt(cb) {
-    var names = Object.keys(ART.atlas), left = names.length
-    names.forEach(function (n) { var im = new Image(); im.onload = function () { SHEETS[n] = im; if (!--left) { ready = true; cb() } }; im.src = ART.atlas[n] })
+    var jobs = []
+    Object.keys(CHARS).forEach(function (k) { var A = atlasFor(k); if (k !== 'shazalino' && A === ART.atlas) return; Object.keys(A).forEach(function (n) { jobs.push([k + ':' + n, A[n]]) }) })
+    var left = jobs.length
+    jobs.forEach(function (j) { var im = new Image(); im.onload = im.onerror = function () { SHEETS[j[0]] = im; if (!--left) { ready = true; cb() } }; im.src = j[1] })
   }
   var CACHE = {}
   function frameCanvas(stage, state, i, transparent) {
-    var key = stage + state + i + (transparent ? 't' : '')
+    var ck = charKey(), key = ck + stage + state + i + (transparent ? 't' : '')
+    if (!SHEETS[ck + ':adult']) ck = 'shazalino'
     if (CACHE[key]) return CACHE[key]
     var sheet, row
-    if (state === 'egg' || state === 'crack' || state === 'grave') { sheet = SHEETS.extra; row = ART.extraRows.indexOf(state) }
-    else { sheet = SHEETS[stage === 'egg' ? 'baby' : stage] || SHEETS.adult; row = ART.states.indexOf(state); if (row < 0) row = 0 }
+    if (state === 'egg' || state === 'crack' || state === 'grave') { sheet = SHEETS[ck + ':extra']; row = ART.extraRows.indexOf(state) }
+    else { sheet = SHEETS[ck + ':' + (stage === 'egg' ? 'baby' : stage)] || SHEETS[ck + ':adult']; row = ART.states.indexOf(state); if (row < 0) row = 0 }
     var c = document.createElement('canvas'); c.width = c.height = 64
     var x = c.getContext('2d'); x.drawImage(sheet, i * 64, row * 64, 64, 64, 0, 0, 64, 64)
     if (transparent) {
@@ -199,14 +212,15 @@
     return mode === 'ROAM' && st === 'idle' ? 'roam' : st
   }
   // MEOW bubble in a tiny pixel font (fits the 64x64 bag screen)
-  var FONT = { M: ['10001', '11011', '10101', '10001', '10001'], E: ['111', '100', '110', '100', '111'], O: ['111', '101', '101', '101', '111'], W: ['10001', '10001', '10101', '11011', '10001'] }
+  var FONT = { M: ['10001', '11011', '10101', '10001', '10001'], E: ['111', '100', '110', '100', '111'], O: ['111', '101', '101', '101', '111'], W: ['10001', '10001', '10101', '11011', '10001'],
+    F: ['111', '100', '110', '100', '100'], R: ['110', '101', '110', '101', '101'], A: ['010', '101', '111', '101', '101'], B: ['110', '101', '110', '101', '110'], P: ['110', '101', '110', '100', '100'] }
   function spriteBox(stage) {
     var d = frameCanvas(stage, 'idle', 0, true).getContext('2d').getImageData(0, 0, 64, 64).data, minX = 64, minY = 64, maxX = 0, maxY = 0
     for (var y = 0; y < 64; y++) for (var x = 0; x < 64; x++) if (d[(y * 64 + x) * 4 + 3]) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y) }
     return { minX: minX, minY: minY, maxX: maxX, maxY: maxY }
   }
   function drawMeow(x, bx, by) {
-    var word = 'MEOW', w = 1; for (var i = 0; i < 4; i++) w += FONT[word[i]][0].length + 1
+    var word = CH().word, w = 1; for (var i = 0; i < 4; i++) w += FONT[word[i]][0].length + 1
     var bw = w + 2, bh = 9; bx = Math.max(0, Math.min(64 - bw, bx)); by = Math.max(0, by)
     x.fillStyle = '#f2f2f8'; x.fillRect(bx + 1, by, bw - 2, bh); x.fillRect(bx, by + 1, bw, bh - 2)
     x.fillRect(bx + 3, by + bh, 2, 1); x.fillRect(bx + 2, by + bh + 1, 1, 1)        // little tail pointing at her
@@ -288,11 +302,11 @@
     '#pp .bagmsg{font-size:11px;color:#aaa;text-align:center;min-height:14px}#pp .toast{position:absolute;left:16px;right:16px;bottom:96px;background:#ffc72c;color:#111;border-radius:12px;padding:12px;font-weight:700;text-align:center;z-index:5}' +
     '#pp .scroll{flex:1;overflow:auto;padding-bottom:16px}#pp .alb{display:flex;gap:12px;align-items:center;margin:8px 16px;padding:12px;border-radius:14px;background:linear-gradient(135deg,#2a1e03,#121216);border:1.5px solid #ffc72c}' +
     '#pp .sheet{top:auto!important;inset:auto 0 0 0;display:block!important;align-items:initial}#pp .btn{height:auto!important;min-height:52px;flex:none!important;display:flex!important;align-items:center;justify-content:center;text-align:center;white-space:normal;font-size:16px!important;box-shadow:none;gap:6px}#pp .btn span{font-size:inherit}#pp .toast{border:0!important;box-shadow:0 8px 24px #0009}#pp .card{display:block!important;gap:0}#pp .row{flex-direction:row!important}#pp .bar{height:7px!important}' +
-    '#pp .gear{font-size:18px}#pp .sect{color:#ffc72c;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:14px 2px 4px}#pp .manual{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;padding:6px 14px;align-items:flex-start}#pp .manual img{flex:0 0 100%;max-width:100%;max-height:calc(100vh - 140px);object-fit:contain;scroll-snap-align:center;border-radius:14px;background:#111}#pp .mdots{text-align:center;color:#aaa;font-size:12px;padding:6px 0 14px}' +
+    '#pp canvas.eggc{width:72px;height:72px;image-rendering:pixelated;display:inline-block}#pp .gear{font-size:18px}#pp .sect{color:#ffc72c;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:14px 2px 4px}#pp .manual{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;padding:6px 14px;align-items:flex-start}#pp .manual img{flex:0 0 100%;max-width:100%;max-height:calc(100vh - 140px);object-fit:contain;scroll-snap-align:center;border-radius:14px;background:#111}#pp .mdots{text-align:center;color:#aaa;font-size:12px;padding:6px 0 14px}' +
     'body.pp-open .demo-bags{z-index:10000;top:104px;bottom:auto;right:26px}body.pp-backon #root{padding-top:48px}.pp-back{position:fixed;top:6px;right:12px;z-index:9000;display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:20px;border:1.5px solid #ffc72c;background:#14100a;color:#ffc72c;font-weight:800;font-size:14px;box-shadow:0 4px 16px #000c}' +
     '.pets-tile{display:flex;align-items:center;gap:12px;width:100%;margin:10px 0 4px;padding:14px 16px;border-radius:16px;border:2px solid #ffc72c;background:linear-gradient(90deg,#2a1e03,#120d02);color:#fff;text-align:left;box-shadow:0 0 18px #ffc72c55}' +
     '.pets-tile .pets-tile-icon{font-size:30px}.pets-tile strong{color:#ffc72c;font-size:18px;display:block}.pets-tile small{color:#ddd;font-size:12px}'
-  var root = null, isOpen = false, screen = 'home', sheet = null, onb = { sex: 'girl', name: 'Shazalino' }, anim = null, frameI = 0, temp = null, toastT = null
+  var root = null, isOpen = false, screen = 'home', sheet = null, onb = { sex: 'girl', name: 'Shazalino', char: 'shazalino' }, anim = null, frameI = 0, temp = null, toastT = null
   function el(h) { var d = document.createElement('div'); d.innerHTML = h; return d.firstChild }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] }) }
   function he(p) { return p && p.sex === 'boy' ? 'he' : 'she' }
@@ -356,7 +370,7 @@
     if (rubDist > 140) {
       rubDist = 0
       p.happy += 5; clamp(p); save()
-      show('happy', ['Meow! 💕', 'Purrrr… 😻', 'Mrrrow! ❤️'][Math.floor(Math.random() * 3)], 1800)
+      show('happy', CH().rub[Math.floor(Math.random() * 3)], 1800)
     }
   }
   function endRub() { rubLast = null }
@@ -366,7 +380,7 @@
     var p = G.pet; if (!p || p.dead || !p.hatchedAt || screen !== 'home' || sheet || (temp && temp.until > Date.now())) return
     if (Date.now() < nextMeow) return
     nextMeow = Date.now() + 12000 + Math.random() * 18000
-    if (showState(p, gameNow()) === 'idle') show('idle', ['Meow!', 'Mew? 🐾', 'Meow meow!'][Math.floor(Math.random() * 3)], 1600)
+    if (showState(p, gameNow()) === 'idle') show('idle', CH().say[Math.floor(Math.random() * 3)], 1600)
   }
   function paintMeters() {
     var p = G.pet; if (!p || !root) return
@@ -387,17 +401,17 @@
     if (screen === 'welcome') h = header('PAAAWS PETS') + '<div class="mid">' + petCanvas().replace('class="pet"', 'class="pet" data-state="egg"') +
       '<div class="big">PAAAWS PETS</div><div class="txt">Hatch your own pet, look after it, teach it tricks and show it off on your bag.</div></div><button class="btn" data-go="choose">Get started</button>'
     else if (screen === 'choose') h = header('Choose your egg', 'welcome') + '<div class="mid"><div class="grid2">' +
-      '<div class="card on" data-go="sexname">🥚<br>Shazalino</div><div class="card off">🥚<br>Pup<br><small>Coming soon</small></div><div class="card off">🥚<br>Drako<br><small>Coming soon</small></div><div class="card off">🥚<br>Pawbo<br><small>Coming soon</small></div>' +
-      '</div></div><button class="btn" data-go="sexname">Choose Shazalino</button>'
+      Object.keys(CHARS).map(function (k) { return '<div class="card' + (charKey() === k ? ' on' : '') + '" data-char="' + k + '"><canvas class="eggc" data-egg="' + k + '" width="64" height="64"></canvas><br>' + CHARS[k].name + '</div>' }).join('') +
+      '</div></div><button class="btn" data-go="sexname">Choose ' + CH().name + '</button>'
     else if (screen === 'sexname') h = header('Your pet', 'choose') + '<div class="mid"><div class="big">Boy or girl?</div><div class="grid2">' +
       '<div class="card' + (onb.sex === 'boy' ? ' on' : '') + '" data-sex="boy">♂ Boy</div><div class="card' + (onb.sex === 'girl' ? ' on' : '') + '" data-sex="girl">♀ Girl</div></div>' +
-      '<div class="big">Name your pet</div><input class="f" maxlength="14" data-in="name" value="' + esc(onb.name) + '"><div class="txt" style="font-size:12px;color:#999">Leave it as Shazalino, or type your own.</div></div>' +
+      '<div class="big">Name your pet</div><input class="f" maxlength="14" data-in="name" value="' + esc(onb.name) + '"><div class="txt" style="font-size:12px;color:#999">Leave it as ' + CH().name + ', or type your own.</div></div>' +
       '<button class="btn" data-act="hatch">That\'s my pet!</button>'
     else if (screen === 'home' && p) {
       var stt = temp && temp.until > Date.now() ? temp.state : showState(p, t)
       var night = inRange(tod(t), G.settings.bedStart, G.settings.bedEnd)
       var say = temp && temp.until > Date.now() ? temp.say : (p.hatchedAt ? SAY[stt] : 'Hatching soon…')
-      var sub = !p.hatchedAt ? 'EGG' : 'SHAZALINO · ' + (p.sex === 'boy' ? 'BOY' : 'GIRL') + ' · ' + STAGE_NAME[p.stage].toUpperCase() + ' · DAY ' + (Math.floor((t - p.hatchedAt) / DAY) + 1) + (G.settings.holiday ? ' · ⏸ PAUSED' : '') + (G.settings.speed > 1 ? ' · TEST ×' + G.settings.speed : '')
+      var sub = !p.hatchedAt ? 'EGG' : CH(p).name.toUpperCase() + ' · ' + (p.sex === 'boy' ? 'BOY' : 'GIRL') + ' · ' + STAGE_NAME[p.stage].toUpperCase() + ' · DAY ' + (Math.floor((t - p.hatchedAt) / DAY) + 1) + (G.settings.holiday ? ' · ⏸ PAUSED' : '') + (G.settings.speed > 1 ? ' · TEST ×' + G.settings.speed : '')
       h = header('🐾 ' + esc(p.name)) + '<div class="sub">' + sub + '</div><div class="room' + (night || p.lightsOff ? ' night' : '') + '">' +
         (say ? '<div class="bub"><span>' + esc(say) + '</span></div>' : '') + petCanvas() + '</div>' +
         (p.hatchedAt ? '' : '<div class="txt" style="text-align:center" data-countdown></div>') +
@@ -421,7 +435,7 @@
         }).join('') + '<div class="txt" style="padding:8px 16px;font-size:12px;color:#999">Tricks get rusty if you don\'t practise for 2 days. Mastered tricks never drop below 70%.</div></div>'
     }
     else if (screen === 'album') h = header('📖 Memory Album', p ? 'home' : 'newegg') + '<div class="scroll">' + (G.album.length ? G.album.map(function (a) {
-      return '<div class="alb"><div style="font-size:34px">🐱</div><div class="txt"><b style="color:#ffc72c">#' + a.n + ' ' + esc(a.name) + '</b><br>' + a.char + ' · ' + (a.sex === 'boy' ? 'Boy' : 'Girl') + '<br>' + a.days + ' day' + (a.days === 1 ? '' : 's') + ' · ' + a.form + (a.golden ? '<br>🏅 Golden Paw' : '') + '</div></div>'
+      return '<div class="alb"><div style="font-size:34px">' + ({ Pup: '🐶', Drako: '🐲', Pawbo: '🐾', Penny: '🐕' }[a.char] || '🐱') + '</div><div class="txt"><b style="color:#ffc72c">#' + a.n + ' ' + esc(a.name) + '</b><br>' + a.char + ' · ' + (a.sex === 'boy' ? 'Boy' : 'Girl') + '<br>' + a.days + ' day' + (a.days === 1 ? '' : 's') + ' · ' + a.form + (a.golden ? '<br>🏅 Golden Paw' : '') + '</div></div>'
     }).join('') : '<div class="mid"><div class="txt">No memories yet.</div></div>') + '<div class="txt" style="padding:8px 16px;font-size:12px;color:#999">Only the card is kept. Tricks and stats are cleared.</div></div>'
     else if (screen === 'settings') {
       var s = G.settings
@@ -461,6 +475,11 @@
       return '<button class="btn' + (G.settings.display === m ? '' : ' ghost') + '" data-mode="' + m + '">' + { LIVE: '▶ LIVE: shows the real state', ROAM: '🐾 ROAM: walks & jumps round the bag', SLEEP: '💤 SLEEP: always shows sleeping', OFF: '🚫 OFF: pet not sent to the bag' }[m] + '</button>'
     }).join('') + '<button class="btn ghost" data-act="sendnow">📤 Send to bag now</button></div>'
     root.innerHTML = h
+    ;[].forEach.call(root.querySelectorAll('canvas.eggc'), function (cv) {
+      var sh = SHEETS[cv.dataset.egg + ':extra']; if (!sh || !sh.width) return
+      var x = cv.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(sh, 0, ART.extraRows.indexOf('egg') * 64, 64, 64, 0, 0, 64, 64)
+      var dd = x.getImageData(0, 0, 64, 64); for (var q = 0; q < dd.data.length; q += 4) if (dd.data[q] < 6 && dd.data[q + 1] < 6 && dd.data[q + 2] < 6) dd.data[q + 3] = 0; x.putImageData(dd, 0, 0)
+    })
     paintPet(); paintMeters()
   }
 
@@ -472,7 +491,7 @@
     var p = G.pet, t = gameNow()
     if (a === 'close') return close()
     if (a === 'shut') { sheet = null; return render() }
-    if (a === 'hatch') { G.pet = newPet((onb.name || '').trim() || 'Shazalino', onb.sex); G.settings.display = G.settings.display || 'LIVE'; setClock(); save(); go('home'); syncBag(true); return }
+    if (a === 'hatch') { G.pet = newPet((onb.name || '').trim() || CH().name, onb.sex, charKey({ char: onb.char })); G.settings.display = G.settings.display || 'LIVE'; setClock(); save(); go('home'); syncBag(true); return }
     if (a === 'feedsheet') { sheet = 'feed'; return render() }
     if (a === 'caresheet') { sheet = 'care'; return render() }
     if (a === 'bagsheet') { sheet = 'bag'; return render() }
@@ -496,7 +515,7 @@
     if (a === 'play') { sheet = 'play'; return render() }
     if (a === 'quickplay') { if (p.happy < 60) cared(p); p.happy += 20; p.energy -= 8; p.full -= 3; clamp(p); save(); return show('happy', 'Again! Again! 🎉') }
     if (a === 'arcade') { if (p.lightsOff) return toast(p.name + ' is asleep.'); fromPet(true); close(); if (window.paaawsNav) window.paaawsNav('games'); return }
-    if (a === 'cuddle') { if (!cooldown(p, 'cuddle', 30)) return toast('Lots of cuddles already! Try again soon.'); p.happy += 12; clamp(p); save(); return show('happy', 'Purrr… ❤️') }
+    if (a === 'cuddle') { if (!cooldown(p, 'cuddle', 30)) return toast('Lots of cuddles already! Try again soon.'); p.happy += 12; clamp(p); save(); return show('happy', CH().cuddle) }
     if (a === 'clean') {
       if (p.poops) { p.poops = 0; p.hyg += 35; p.unclean = 0; cared(p); clamp(p); save(); return show('happy', 'All clean! ✨') }
       if (!cooldown(p, 'bath', 30)) return toast('Already squeaky clean!')
@@ -537,7 +556,8 @@
     if (B && (B.list() || []).length) { lastSent = ''; syncBag(true, tr.state); toast('Sent ' + tr.name + ' to your bag') } else toast('Connect your bag to show it off.')
   }
   function onClick(e) {
-    var b = e.target.closest('[data-act],[data-go],[data-sex],[data-teach],[data-show],[data-mode]'); if (!b) return
+    var b = e.target.closest('[data-act],[data-go],[data-sex],[data-teach],[data-show],[data-mode],[data-char]'); if (!b) return
+    if (b.dataset.char) { var was = CH({ char: onb.char }).name; onb.char = b.dataset.char; if (!onb.name || onb.name === was) onb.name = CHARS[onb.char].name; return render() }
     if (b.dataset.go) return go(b.dataset.go)
     if (b.dataset.sex) { onb.sex = b.dataset.sex; return render() }
     if (b.dataset.teach) return teach(b.dataset.teach)
