@@ -191,7 +191,34 @@
 
   // ---------- bag ----------
   var lastSent = '', sending = false, bagMsg = ''
-  function bagState(p, t) { var mode = G.settings.display; return mode === 'SLEEP' ? (p && !p.hatchedAt ? 'egg' : 'sleep') : showState(p, t) }
+  function bagState(p, t) {
+    var mode = G.settings.display
+    if (mode === 'SLEEP') return p && !p.hatchedAt ? 'egg' : 'sleep'
+    var st = showState(p, t)
+    return mode === 'ROAM' && st === 'idle' ? 'roam' : st
+  }
+  // ROAM: she walks along the floor, jumps up the right wall, walks back, jumps the left wall (loop)
+  function roamFrames(stage) {
+    var src = frameCanvas(stage, 'idle', 0, true), x0 = src.getContext('2d').getImageData(0, 0, 64, 64).data
+    var minX = 64, minY = 64, maxX = 0, maxY = 0
+    for (var y = 0; y < 64; y++) for (var x = 0; x < 64; x++) if (x0[(y * 64 + x) * 4 + 3]) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y) }
+    var w = maxX - minX + 1, h = maxY - minY + 1, k = Math.min(1, 28 / h, 30 / w), dw = Math.max(8, Math.round(w * k)), dh = Math.max(8, Math.round(h * k))
+    var L = 2, R = 62 - dw, FLOOR = 62 - dh, TOP = 6, out = [], N = 28
+    for (var f = 0; f < N; f++) {
+      var px, py, flip = false, blink = 0
+      if (f < 10) { px = L + (R - L) * f / 10; py = FLOOR - (f % 2 ? 2 : 0) }                                      // walk right
+      else if (f < 14) { var j = (f - 10) / 3; px = R; py = FLOOR - Math.round(Math.sin(j * Math.PI) * (FLOOR - TOP)) }   // jump up the right wall
+      else if (f < 24) { px = R - (R - L) * (f - 14) / 10; py = FLOOR - (f % 2 ? 2 : 0); flip = true }              // walk left
+      else { var j2 = (f - 24) / 3; px = L; py = FLOOR - Math.round(Math.sin(j2 * Math.PI) * (FLOOR - TOP)); flip = true } // jump the left wall
+      var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d')
+      x.fillStyle = '#000'; x.fillRect(0, 0, 64, 64); x.imageSmoothingEnabled = false
+      var fr = frameCanvas(stage, 'idle', f === 6 || f === 20 ? 2 : 0, true)
+      x.save(); if (flip) { x.translate(64, 0); x.scale(-1, 1); px = 64 - px - dw }
+      x.drawImage(fr, minX, minY, w, h, Math.round(px), Math.round(py), dw, dh); x.restore()
+      out.push(c.toDataURL('image/png'))
+    }
+    return out
+  }
   function syncBag(force, override) {
     var B = window.paaawsBag; if (!B || !isOpen || G.settings.display === 'OFF' || !G.pet) return
     var list = B.list() || []; if (!list.length) { bagMsg = 'Bag not connected'; return }
@@ -199,8 +226,8 @@
     var state = override || bagState(p, t), key = stage + ':' + state
     if ((key === lastSent && !force) || sending) return
     sending = true; bagMsg = 'Sending to bag…'; paintBag()
-    var frames = [0, 1, 2, 3].map(function (i) { return frameCanvas(stage, state, i, false).toDataURL('image/png') })
-    B.gifFromPngs(frames, [250, 250, 250, 250]).then(function (bytes) {
+    var frames = state === 'roam' ? roamFrames(stage) : [0, 1, 2, 3].map(function (i) { return frameCanvas(stage, state, i, false).toDataURL('image/png') })
+    B.gifFromPngs(frames, frames.map(function () { return state === 'roam' ? 120 : 250 })).then(function (bytes) {
       return list.reduce(function (pr, bag) { return pr.then(function () { return B.sendGif(bag, bytes, SLOT) }) }, Promise.resolve())
     }).then(function () { lastSent = key; bagMsg = 'On your bag ✓' }).catch(function (e) { bagMsg = 'Bag: ' + (e && e.message || 'send failed') })
       .then(function () { sending = false; paintBag() })
@@ -365,8 +392,8 @@
     if (sheet === 'feed') h += '<div class="shade" data-act="shut"></div><div class="sheet"><button class="btn" data-act="meal">🍽️ Meal</button><button class="btn ghost" data-act="snack">🍪 Snack</button></div>'
     if (sheet === 'care') h += '<div class="shade" data-act="shut"></div><div class="sheet"><button class="btn" data-act="medicine">💊 Medicine</button><button class="btn ghost" data-act="cuddle">🤗 Cuddle</button>' +
       '<button class="btn ghost" data-go="teach">🎓 Teach tricks</button><button class="btn ghost" data-go="album">📖 Memory Album</button><button class="btn ghost" data-go="settings">⚙️ Grown-up settings</button></div>'
-    if (sheet === 'bag') h += '<div class="shade" data-act="shut"></div><div class="sheet">' + ['LIVE', 'SLEEP', 'OFF'].map(function (m) {
-      return '<button class="btn' + (G.settings.display === m ? '' : ' ghost') + '" data-mode="' + m + '">' + { LIVE: '▶ LIVE: shows the real state', SLEEP: '💤 SLEEP: always shows sleeping', OFF: '⏻ OFF: pet not sent to the bag' }[m] + '</button>'
+    if (sheet === 'bag') h += '<div class="shade" data-act="shut"></div><div class="sheet">' + ['LIVE', 'ROAM', 'SLEEP', 'OFF'].map(function (m) {
+      return '<button class="btn' + (G.settings.display === m ? '' : ' ghost') + '" data-mode="' + m + '">' + { LIVE: '▶ LIVE: shows the real state', ROAM: '🐾 ROAM: walks & jumps round the bag', SLEEP: '💤 SLEEP: always shows sleeping', OFF: '🚫 OFF: pet not sent to the bag' }[m] + '</button>'
     }).join('') + '<button class="btn ghost" data-act="sendnow">📤 Send to bag now</button></div>'
     root.innerHTML = h
     paintPet(); paintMeters()
