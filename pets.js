@@ -197,6 +197,32 @@
     var st = showState(p, t)
     return mode === 'ROAM' && st === 'idle' ? 'roam' : st
   }
+  // MEOW bubble in a tiny pixel font (fits the 64x64 bag screen)
+  var FONT = { M: ['10001', '11011', '10101', '10001', '10001'], E: ['111', '100', '110', '100', '111'], O: ['111', '101', '101', '101', '111'], W: ['10001', '10001', '10101', '11011', '10001'] }
+  function spriteBox(stage) {
+    var d = frameCanvas(stage, 'idle', 0, true).getContext('2d').getImageData(0, 0, 64, 64).data, minX = 64, minY = 64, maxX = 0, maxY = 0
+    for (var y = 0; y < 64; y++) for (var x = 0; x < 64; x++) if (d[(y * 64 + x) * 4 + 3]) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y) }
+    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY }
+  }
+  function drawMeow(x, bx, by) {
+    var word = 'MEOW', w = 1; for (var i = 0; i < 4; i++) w += FONT[word[i]][0].length + 1
+    var bw = w + 2, bh = 9; bx = Math.max(0, Math.min(64 - bw, bx)); by = Math.max(0, by)
+    x.fillStyle = '#f2f2f8'; x.fillRect(bx + 1, by, bw - 2, bh); x.fillRect(bx, by + 1, bw, bh - 2)
+    x.fillRect(bx + 3, by + bh, 2, 1); x.fillRect(bx + 2, by + bh + 1, 1, 1)        // little tail pointing at her
+    x.fillStyle = '#20202a'; var cx = bx + 2
+    for (var k = 0; k < 4; k++) { var g = FONT[word[k]]; for (var r = 0; r < 5; r++) for (var c = 0; c < g[r].length; c++) if (g[r][c] === '1') x.fillRect(cx + c, by + 2 + r, 1, 1); cx += g[0].length + 1 }
+  }
+  function meowFrames(stage) {                       // sits, blinks, then a MEOW pops out and floats up
+    var b = spriteBox(stage), out = [], seq = [0, 1, 2, 1, 0, 3, 0, 1, 0, 1]
+    for (var f = 0; f < seq.length; f++) {
+      var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d')
+      x.drawImage(frameCanvas(stage, 'idle', seq[f], false), 0, 0)
+      if (f >= 6) drawMeow(x, b.maxX - 6, b.minY - 12 - (f - 6))
+      out.push(c.toDataURL('image/png'))
+    }
+    return out
+  }
+  function meowDelays() { return [300, 300, 300, 300, 300, 300, 260, 260, 260, 400] }
   // ROAM: she walks along the floor, jumps up the right wall, walks back, jumps the left wall (loop)
   function roamFrames(stage) {
     var src = frameCanvas(stage, 'idle', 0, true), x0 = src.getContext('2d').getImageData(0, 0, 64, 64).data
@@ -226,8 +252,11 @@
     var state = override || bagState(p, t), key = stage + ':' + state
     if ((key === lastSent && !force) || sending) return
     sending = true; bagMsg = 'Sending to bag…'; paintBag()
-    var frames = state === 'roam' ? roamFrames(stage) : [0, 1, 2, 3].map(function (i) { return frameCanvas(stage, state, i, false).toDataURL('image/png') })
-    B.gifFromPngs(frames, frames.map(function () { return state === 'roam' ? 120 : 250 })).then(function (bytes) {
+    var frames, delays
+    if (state === 'roam') { var m = meowFrames(stage), r = roamFrames(stage); frames = m.concat(r); delays = meowDelays().concat(r.map(function () { return 120 })) }
+    else if (state === 'idle') { frames = meowFrames(stage); delays = meowDelays() }
+    else { frames = [0, 1, 2, 3].map(function (i) { return frameCanvas(stage, state, i, false).toDataURL('image/png') }); delays = [250, 250, 250, 250] }
+    B.gifFromPngs(frames, delays).then(function (bytes) {
       return list.reduce(function (pr, bag) { return pr.then(function () { return B.sendGif(bag, bytes, SLOT) }) }, Promise.resolve())
     }).then(function () { lastSent = key; bagMsg = 'On your bag ✓' }).catch(function (e) { bagMsg = 'Bag: ' + (e && e.message || 'send failed') })
       .then(function () { sending = false; paintBag() })
@@ -238,7 +267,7 @@
     '#pp *{box-sizing:border-box}#pp .top{display:flex;align-items:center;gap:8px;padding:14px 16px 6px}#pp .ttl{font-weight:800;color:#ffc72c;font-size:20px;flex:1}' +
     '#pp .x{background:#15151b;border:1px solid #333;color:#fff;border-radius:12px;min-width:48px;height:44px;font-size:18px}' +
     '#pp .sub{font-size:12px;color:#aaa;padding:0 16px}#pp .room{position:relative;margin:10px 16px;flex:1;min-height:200px;border-radius:18px;background:linear-gradient(#2b2243,#18142a);display:flex;align-items:flex-end;justify-content:center}' +
-    '#pp .room.night{background:linear-gradient(#0b0d24,#06060f)}#pp canvas.pet{width:220px;height:220px;image-rendering:pixelated;margin-bottom:6px}' +
+    '#pp .room.night{background:linear-gradient(#0b0d24,#06060f)}#pp canvas.pet{width:220px;height:220px;image-rendering:pixelated;margin-bottom:6px;touch-action:none;cursor:grab}' +
     '#pp .bub{position:absolute;top:12px;left:12px;right:12px;text-align:center}#pp .bub span{background:#fff;color:#111;border-radius:14px;padding:7px 12px;font-weight:700;font-size:13px;display:inline-block}' +
     '#pp .meters{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:0 16px}#pp .m{background:#15151b;border-radius:10px;padding:6px;text-align:center;font-size:11px}' +
     '#pp .bar{height:7px;border-radius:4px;background:#333;margin-top:4px;overflow:hidden}#pp .bar i{display:block;height:100%;background:#ffc72c}#pp .bar i.low{background:#ff4d4d}' +
@@ -273,11 +302,12 @@
   function open() {
     if (!root) {
       root = el('<div id="pp"></div>'); root.addEventListener('click', onClick); root.addEventListener('input', onInput); root.addEventListener('change', onInput)
+      root.addEventListener('pointermove', onRub); root.addEventListener('touchmove', onRub, { passive: true }); root.addEventListener('pointerup', endRub); root.addEventListener('touchend', endRub); root.addEventListener('pointerleave', endRub)
     }
     if (root.parentNode !== document.body) document.body.appendChild(root)
     isOpen = true; root.style.display = 'flex'
     reload(); tick(); screen = G.pet ? (G.pet.dead ? 'goodbye' : 'home') : 'welcome'; render()
-    clearInterval(anim); anim = setInterval(function () { frameI = (frameI + 1) % 4; tick(); paintPet() }, 250)
+    clearInterval(anim); anim = setInterval(function () { frameI = (frameI + 1) % 4; tick(); maybeMeow(); paintPet() }, 250)
     syncBag(true)
   }
   function close() { isOpen = false; clearInterval(anim); setClock(); save(); if (root) root.style.display = 'none' }
@@ -310,6 +340,29 @@
     var x = c.getContext('2d'); x.clearRect(0, 0, 64, 64); x.drawImage(frameCanvas(stage, state, frameI, true), 0, 0)
     var cd = root.querySelector('[data-countdown]')
     if (cd && p && !p.hatchedAt) cd.textContent = 'Hatching in ' + Math.max(0, Math.ceil((EGG_MS - (t - p.eggAt)) / 1000)) + 's'
+  }
+  // Rub her: stroke the pet on screen -> purr + meow bubble (small happiness boost, not farmable)
+  var rubDist = 0, rubLast = null
+  function onRub(e) {
+    var c = e.target.closest && e.target.closest('canvas.pet'); if (!c || screen !== 'home') return
+    var p = G.pet; if (!p || p.dead || !p.hatchedAt || p.lightsOff) return
+    var pt = e.touches ? e.touches[0] : e; if (!pt) return
+    if (rubLast) rubDist += Math.abs(pt.clientX - rubLast.x) + Math.abs(pt.clientY - rubLast.y)
+    rubLast = { x: pt.clientX, y: pt.clientY }
+    if (rubDist > 140) {
+      rubDist = 0
+      if (cooldown(p, 'rub', 2)) { p.happy += 5; clamp(p); save() }
+      show('happy', ['Meow! 💕', 'Purrrr… 😻', 'Mrrrow! ❤️'][Math.floor(Math.random() * 3)], 1800)
+    }
+  }
+  function endRub() { rubLast = null }
+  // When she's awake and fine she meows on her own now and then
+  var nextMeow = Date.now() + 8000
+  function maybeMeow() {
+    var p = G.pet; if (!p || p.dead || !p.hatchedAt || screen !== 'home' || sheet || (temp && temp.until > Date.now())) return
+    if (Date.now() < nextMeow) return
+    nextMeow = Date.now() + 12000 + Math.random() * 18000
+    if (showState(p, gameNow()) === 'idle') show('idle', ['Meow!', 'Mew? 🐾', 'Meow meow!'][Math.floor(Math.random() * 3)], 1600)
   }
   function paintMeters() {
     var p = G.pet; if (!p || !root) return
