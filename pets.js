@@ -286,6 +286,7 @@
     '#pp .bagmsg{font-size:11px;color:#aaa;text-align:center;min-height:14px}#pp .toast{position:absolute;left:16px;right:16px;bottom:96px;background:#ffc72c;color:#111;border-radius:12px;padding:12px;font-weight:700;text-align:center;z-index:5}' +
     '#pp .scroll{flex:1;overflow:auto;padding-bottom:16px}#pp .alb{display:flex;gap:12px;align-items:center;margin:8px 16px;padding:12px;border-radius:14px;background:linear-gradient(135deg,#2a1e03,#121216);border:1.5px solid #ffc72c}' +
     '#pp .sheet{top:auto!important;inset:auto 0 0 0;display:block!important;align-items:initial}#pp .btn{height:auto!important;min-height:52px;flex:none!important;display:flex!important;align-items:center;justify-content:center;text-align:center;white-space:normal;font-size:16px!important;box-shadow:none;gap:6px}#pp .btn span{font-size:inherit}#pp .toast{border:0!important;box-shadow:0 8px 24px #0009}#pp .card{display:block!important;gap:0}#pp .row{flex-direction:row!important}#pp .bar{height:7px!important}' +
+    'body.pp-backon #root{padding-top:48px}.pp-back{position:fixed;top:6px;right:12px;z-index:9000;display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:20px;border:1.5px solid #ffc72c;background:#14100a;color:#ffc72c;font-weight:800;font-size:14px;box-shadow:0 4px 16px #000c}' +
     '.pets-tile{display:flex;align-items:center;gap:12px;width:100%;margin:10px 0 4px;padding:14px 16px;border-radius:16px;border:2px solid #ffc72c;background:linear-gradient(90deg,#2a1e03,#120d02);color:#fff;text-align:left;box-shadow:0 0 18px #ffc72c55}' +
     '.pets-tile .pets-tile-icon{font-size:30px}.pets-tile strong{color:#ffc72c;font-size:18px;display:block}.pets-tile small{color:#ddd;font-size:12px}'
   var root = null, isOpen = false, screen = 'home', sheet = null, onb = { sex: 'girl', name: 'Shazalino' }, anim = null, frameI = 0, temp = null, toastT = null
@@ -485,7 +486,7 @@
     }
     if (a === 'play') { sheet = 'play'; return render() }
     if (a === 'quickplay') { if (p.happy < 60) cared(p); p.happy += 20; p.energy -= 8; p.full -= 3; clamp(p); save(); return show('happy', 'Again! Again! 🎉') }
-    if (a === 'arcade') { if (p.lightsOff) return toast(p.name + ' is asleep.'); close(); if (window.paaawsNav) window.paaawsNav('games'); return }
+    if (a === 'arcade') { if (p.lightsOff) return toast(p.name + ' is asleep.'); fromPet(true); close(); if (window.paaawsNav) window.paaawsNav('games'); return }
     if (a === 'cuddle') { if (!cooldown(p, 'cuddle', 30)) return toast('Lots of cuddles already! Try again soon.'); p.happy += 12; clamp(p); save(); return show('happy', 'Purrr… ❤️') }
     if (a === 'clean') {
       if (p.poops) { p.poops = 0; p.hyg += 35; p.unclean = 0; cared(p); clamp(p); save(); return show('happy', 'All clean! ✨') }
@@ -573,6 +574,21 @@
       if (window.paaawsToast) window.paaawsToast(msg); else toast(msg)
     } catch (e) {}
   })
+  // "Back to pet": only shows in the Arcade / a game when you got there from your pet
+  function fromPet(v) { try { if (v === undefined) return sessionStorage.getItem('pp-from-pet') === '1'; v ? sessionStorage.setItem('pp-from-pet', '1') : sessionStorage.removeItem('pp-from-pet') } catch (e) { return false } }
+  var backBtn = null
+  setInterval(function () {
+    var pg = window.paaawsPage ? window.paaawsPage() : null
+    if (pg === 'home' && fromPet() && !isOpen) fromPet(false)          // went home another way: forget it
+    var want = !isOpen && fromPet() && pg && pg !== 'home'
+    if (want && !backBtn) {
+      backBtn = document.createElement('button'); backBtn.className = 'pp-back'; backBtn.textContent = '🐾 Back to pet'
+      backBtn.addEventListener('click', function () { fromPet(false); if (window.paaawsNav) window.paaawsNav('home'); setTimeout(open, 60) })
+      document.body.appendChild(backBtn)
+    }
+    if (backBtn) backBtn.style.display = want ? 'flex' : 'none'
+    document.body.classList.toggle('pp-backon', !!want)
+  }, 400)
   // Brightness pop-up (sun button on the home screen): tap outside the slider to close it
   document.addEventListener('click', function (e) {
     if (!document.body.classList.contains('bright-open')) return
