@@ -190,7 +190,7 @@
   }
 
   // ---------- bag ----------
-  var lastSent = '', sending = false, bagMsg = ''
+  var lastSent = '', sending = false, again = false, bagMsg = ''
   function bagState(p, t) {
     var mode = G.settings.display
     if (mode === 'SLEEP') return p && !p.hatchedAt ? 'egg' : 'sleep'
@@ -250,7 +250,8 @@
     var list = B.list() || []; if (!list.length) { bagMsg = 'Bag not connected'; return }
     var t = gameNow(), p = G.pet, stage = p.stage === 'egg' ? 'baby' : p.stage
     var state = override || bagState(p, t), key = stage + ':' + state
-    if ((key === lastSent && !force) || sending) return
+    if (key === lastSent && !force) return
+    if (sending) { again = true; return }
     sending = true; bagMsg = 'Sending to bag…'; paintBag()
     var frames, delays
     if (state === 'roam') { var m = meowFrames(stage), r = roamFrames(stage); frames = m.concat(r); delays = meowDelays().concat(r.map(function () { return 120 })) }
@@ -259,7 +260,7 @@
     B.gifFromPngs(frames, delays).then(function (bytes) {
       return list.reduce(function (pr, bag) { return pr.then(function () { return B.sendGif(bag, bytes, SLOT) }) }, Promise.resolve())
     }).then(function () { lastSent = key; bagMsg = 'On your bag ✓' }).catch(function (e) { bagMsg = 'Bag: ' + (e && e.message || 'send failed') })
-      .then(function () { sending = false; paintBag() })
+      .then(function () { sending = false; paintBag(); if (again) { again = false; syncBag(true) } })
   }
 
   // ---------- UI ----------
@@ -286,7 +287,7 @@
     '#pp .bagmsg{font-size:11px;color:#aaa;text-align:center;min-height:14px}#pp .toast{position:absolute;left:16px;right:16px;bottom:96px;background:#ffc72c;color:#111;border-radius:12px;padding:12px;font-weight:700;text-align:center;z-index:5}' +
     '#pp .scroll{flex:1;overflow:auto;padding-bottom:16px}#pp .alb{display:flex;gap:12px;align-items:center;margin:8px 16px;padding:12px;border-radius:14px;background:linear-gradient(135deg,#2a1e03,#121216);border:1.5px solid #ffc72c}' +
     '#pp .sheet{top:auto!important;inset:auto 0 0 0;display:block!important;align-items:initial}#pp .btn{height:auto!important;min-height:52px;flex:none!important;display:flex!important;align-items:center;justify-content:center;text-align:center;white-space:normal;font-size:16px!important;box-shadow:none;gap:6px}#pp .btn span{font-size:inherit}#pp .toast{border:0!important;box-shadow:0 8px 24px #0009}#pp .card{display:block!important;gap:0}#pp .row{flex-direction:row!important}#pp .bar{height:7px!important}' +
-    'body.pp-backon #root{padding-top:48px}.pp-back{position:fixed;top:6px;right:12px;z-index:9000;display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:20px;border:1.5px solid #ffc72c;background:#14100a;color:#ffc72c;font-weight:800;font-size:14px;box-shadow:0 4px 16px #000c}' +
+    'body.pp-open .demo-bags{z-index:10000;top:104px;bottom:auto;right:26px}body.pp-backon #root{padding-top:48px}.pp-back{position:fixed;top:6px;right:12px;z-index:9000;display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:20px;border:1.5px solid #ffc72c;background:#14100a;color:#ffc72c;font-weight:800;font-size:14px;box-shadow:0 4px 16px #000c}' +
     '.pets-tile{display:flex;align-items:center;gap:12px;width:100%;margin:10px 0 4px;padding:14px 16px;border-radius:16px;border:2px solid #ffc72c;background:linear-gradient(90deg,#2a1e03,#120d02);color:#fff;text-align:left;box-shadow:0 0 18px #ffc72c55}' +
     '.pets-tile .pets-tile-icon{font-size:30px}.pets-tile strong{color:#ffc72c;font-size:18px;display:block}.pets-tile small{color:#ddd;font-size:12px}'
   var root = null, isOpen = false, screen = 'home', sheet = null, onb = { sex: 'girl', name: 'Shazalino' }, anim = null, frameI = 0, temp = null, toastT = null
@@ -306,12 +307,12 @@
       root.addEventListener('pointermove', onRub); root.addEventListener('touchmove', onRub, { passive: true }); root.addEventListener('pointerup', endRub); root.addEventListener('touchend', endRub); root.addEventListener('pointerleave', endRub)
     }
     if (root.parentNode !== document.body) document.body.appendChild(root)
-    isOpen = true; root.style.display = 'flex'
+    isOpen = true; root.style.display = 'flex'; document.body.classList.add('pp-open')
     reload(); tick(); screen = G.pet ? (G.pet.dead ? 'goodbye' : 'home') : 'welcome'; render()
     clearInterval(anim); anim = setInterval(function () { frameI = (frameI + 1) % 4; tick(); maybeMeow(); paintPet() }, 250)
     syncBag(true)
   }
-  function close() { isOpen = false; clearInterval(anim); setClock(); save(); if (root) root.style.display = 'none' }
+  function close() { isOpen = false; document.body.classList.remove('pp-open'); clearInterval(anim); setClock(); save(); if (root) root.style.display = 'none' }
 
   var lastSave = 0, lastShow = '', lastNight = ''
   function tick() {

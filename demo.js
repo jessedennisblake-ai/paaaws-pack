@@ -46,7 +46,7 @@
     var bag = {
       n: bagCount,
       slots: {}, region: { x: 0, y: 0, w: W, h: H }, uploadSlot: 0, chunks: {}, total: 0,
-      shown: null, brightness: 20, on: true, caption: 'Waiting for a design…', rx: []
+      shown: null, gifs: {}, brightness: 20, on: true, caption: 'Waiting for a design…', rx: []
     }
     var notifyTarget = new EventTarget()
     var notify = {
@@ -132,7 +132,7 @@
       }
     } else if (cmd === 54) {
       var slot = p[2]
-      if (bag.slots[slot]) { bag.shown = slot; bag.textShown = false; bag.caption = 'Showing on the bag ✓' }
+      if (bag.slots[slot] || bag.gifs[slot]) { bag.shown = slot; bag.textShown = false; bag.caption = 'Showing on the bag ✓' }
       render()
     } else if (cmd === 6) { bag.brightness = p[2]; render() }
     else if (cmd === 4) { bag.on = p[2] === 1; render() }
@@ -144,6 +144,13 @@
     var all = []
     for (var i = 0; i < bag.total; i++) all = all.concat(bag.chunks[i] || [])
     bag.chunks = {}
+    // animated GIF (pet, Media GIFs): keep the GIF itself and let the browser animate it
+    if (all[0] === 71 && all[1] === 73 && all[2] === 70) {
+      if (bag.gifs[bag.uploadSlot]) URL.revokeObjectURL(bag.gifs[bag.uploadSlot])
+      bag.gifs[bag.uploadSlot] = URL.createObjectURL(new Blob([new Uint8Array(all)], { type: 'image/gif' }))
+      delete bag.slots[bag.uploadSlot]
+      bag.shown = bag.uploadSlot; bag.textShown = false; bag.caption = 'Showing on the bag ✓'; render(); return
+    }
     // header: "YSTP01" w h 1 0 64 0 24 then raw RGB
     if (all[0] !== 89 || all[1] !== 83) { bag.caption = 'Sent ✓'; render(); return }
     var w = rd16(all, 6), h = rd16(all, 8), rgb = all.slice(15)
@@ -155,6 +162,7 @@
       var s = (y * w + x) * 3, d = (Y * W + X) * 4
       img[d] = rgb[s]; img[d + 1] = rgb[s + 1]; img[d + 2] = rgb[s + 2]; img[d + 3] = 255
     }
+    if (bag.gifs[bag.uploadSlot]) { URL.revokeObjectURL(bag.gifs[bag.uploadSlot]); delete bag.gifs[bag.uploadSlot] }
     bag.slots[bag.uploadSlot] = img
     bag.shown = bag.uploadSlot
     bag.textShown = false
@@ -221,17 +229,20 @@
         var screen = el('div', 'demo-screen')
         var cv = el('canvas'); cv.width = W; cv.height = H
         screen.appendChild(cv)
+        var gi = el('img', 'demo-gif'); gi.alt = ''; gi.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;display:none'; screen.appendChild(gi)
         wrap.appendChild(el('div', 'demo-bag-name', bags.length > 1 || b.n > 1 ? 'Bag ' + b.n : 'Virtual bag'))
         wrap.appendChild(screen)
         var cap = el('div', 'demo-caption')
         wrap.appendChild(cap)
         wrap.addEventListener('click', function () { panel.classList.toggle('big') })
         panel.appendChild(wrap)
-        c = canvases[b.n] = { wrap: wrap, cv: cv, cap: cap }
+        c = canvases[b.n] = { wrap: wrap, cv: cv, cap: cap, gi: gi }
       }
       var ctx = c.cv.getContext('2d')
       ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H)
       if (b.on && b.shown != null && b.slots[b.shown] && !b.textShown) ctx.putImageData(new ImageData(new Uint8ClampedArray(b.slots[b.shown]), W, H), 0, 0)
+      var gif = b.on && b.shown != null && !b.textShown && b.gifs[b.shown]
+      if (gif) { if (c.gi.getAttribute('src') !== gif) c.gi.src = gif; c.gi.style.display = 'block'; c.gi.style.opacity = String(Math.max(0.2, b.brightness / 20)) } else { c.gi.style.display = 'none'; c.gi.removeAttribute('src') }
       c.cv.style.opacity = b.on ? String(Math.max(0.2, b.brightness / 20)) : '1'
       c.cap.textContent = b.on ? b.caption : 'Screen off'
     })
