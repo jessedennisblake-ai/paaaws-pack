@@ -3,7 +3,7 @@
 (function () {
   'use strict'
   var ART = window.PAAAWS_PET_ART
-  var SLOT = 60                       // the pet's own bag slot (Media GIF uses 56)
+  var SLOT = 57                       // the pet's own bag slot: the board plays slots 0-59 only; Media GIF uses 56, Program 31-54, home 0, default 17
   var EGG_MS = 60 * 1000              // egg hatches in 1 minute (Teddy, 9 Nov)
   var KEYS = ['paaaws-pets-save-a', 'paaaws-pets-save-b']
   var MIN = 60000, HOUR = 3600000, DAY = 86400000
