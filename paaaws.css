@@ -38,3 +38,5 @@ body.demo-on #root{padding-top:30px}
 
 /* Build 034: compact home tiles so all 15 fit on one screen */
 .home .tiles{gap:7px;margin-top:9px}.home .tile{min-height:0;padding:6px 4px 6px;gap:2px;border-radius:14px}.home .tile small{display:none}.home .tile strong{font-size:13.5px;margin-top:0;line-height:1.15}.home .tile .tile-icon{height:27px;width:auto}.home .tile .tile-icon svg{width:25px;height:25px}.home .tile-empty{background:transparent;border:1px dashed #2a2a30;box-shadow:none;pointer-events:none}
+/* Build 034: sun button + brightness pop-up */
+.home-header .logo{zoom:.8}.home-header-btns{gap:5px}.home-header-btns .round-btn,.home-header-btns .sos-btn{width:38px;height:38px}.home-header-btns .round-btn svg{width:20px;height:20px}.home .brightness{display:none}body.bright-open .home .brightness{display:flex;position:fixed;left:16px;right:16px;top:84px;z-index:61;border-color:var(--gold);box-shadow:0 14px 40px #000d,0 0 18px #ffbe2840}body.bright-open::after{content:"";position:fixed;inset:0;background:#000a;z-index:60}body.bright-open .bright-btn{border-color:var(--gold);box-shadow:0 0 12px #ffbe2866}

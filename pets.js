@@ -503,6 +503,12 @@
   }
 
   (function () { var st = document.createElement('style'); st.id = 'pp-css'; st.textContent = CSS; (document.head || document.documentElement).appendChild(st) })()
+  // Brightness pop-up (sun button on the home screen): tap outside the slider to close it
+  document.addEventListener('click', function (e) {
+    if (!document.body.classList.contains('bright-open')) return
+    if (e.target.closest && (e.target.closest('.brightness') || e.target.closest('.bright-btn'))) return
+    document.body.classList.remove('bright-open')
+  }, true)
   loadArt(function () { if (isOpen) render() })
   window.paaawsPets = { open: open, close: close,
     _debug: { state: function () { return G }, advanceMinutes: function (n) { G.clock.game -= 0; G.clock = { game: gameNow() + n * MIN, real: Date.now() }; tick() }, show: showState } }
