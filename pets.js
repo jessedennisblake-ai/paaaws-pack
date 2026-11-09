@@ -443,6 +443,8 @@
       '<div class="big">Ready for a new friend?</div><div class="txt">Your Trick Stars are still yours.</div></div><button class="btn" data-go="choose">New egg</button><button class="btn ghost" data-go="album">My memories</button>'
     else { screen = G.pet ? 'home' : 'welcome'; return render() }
     if (sheet === 'feed') h += '<div class="shade" data-act="shut"></div><div class="sheet"><button class="btn" data-act="meal">🍽️ Meal</button><button class="btn ghost" data-act="snack">🍪 Snack</button></div>'
+    if (sheet === 'play') h += '<div class="shade" data-act="shut"></div><div class="sheet"><button class="btn" data-act="arcade">🕹️ Play a game with ' + esc(p ? p.name : 'your pet') + ' (30 games)</button>' +
+      '<button class="btn ghost" data-act="quickplay">🧸 Quick play</button><div class="bagmsg" style="padding:4px 16px">Every game you play gives ' + esc(p ? p.name : 'your pet') + ' a block of happiness (once every 10 minutes).</div></div>'
     if (sheet === 'care') h += '<div class="shade" data-act="shut"></div><div class="sheet"><button class="btn" data-act="medicine">💊 Medicine</button><button class="btn ghost" data-act="cuddle">🤗 Cuddle</button>' +
       '<button class="btn ghost" data-go="teach">🎓 Teach tricks</button><button class="btn ghost" data-go="album">📖 Memory Album</button><button class="btn ghost" data-go="settings">⚙️ Grown-up settings</button></div>'
     if (sheet === 'bag') h += '<div class="shade" data-act="shut"></div><div class="sheet">' + ['LIVE', 'ROAM', 'SLEEP', 'OFF'].map(function (m) {
@@ -481,7 +483,9 @@
       var d = ukDate(t); if (p.snacks.day !== d) p.snacks = { day: d, n: 0 }; if (++p.snacks.n > 2) p.weight += 2
       p.full += 12; p.happy += 5; clamp(p); save(); return show('eat', 'Crunchy! 🍪')
     }
-    if (a === 'play') { if (!cooldown(p, 'play', 10)) return toast(p.name + ' wants a little break first.'); if (p.happy < 60) cared(p); p.happy += 20; p.energy -= 8; p.full -= 3; clamp(p); save(); return show('happy', 'Again! Again! 🎉') }
+    if (a === 'play') { sheet = 'play'; return render() }
+    if (a === 'quickplay') { if (!cooldown(p, 'play', 10)) return toast(p.name + ' wants a little break first.'); if (p.happy < 60) cared(p); p.happy += 20; p.energy -= 8; p.full -= 3; clamp(p); save(); return show('happy', 'Again! Again! 🎉') }
+    if (a === 'arcade') { if (p.lightsOff) return toast(p.name + ' is asleep.'); close(); if (window.paaawsNav) window.paaawsNav('games'); return }
     if (a === 'cuddle') { if (!cooldown(p, 'cuddle', 30)) return toast('Lots of cuddles already! Try again soon.'); p.happy += 12; clamp(p); save(); return show('happy', 'Purrr… ❤️') }
     if (a === 'clean') {
       if (p.poops) { p.poops = 0; p.hyg += 35; p.unclean = 0; cared(p); clamp(p); save(); return show('happy', 'All clean! ✨') }
@@ -556,6 +560,20 @@
   }
 
   (function () { var st = document.createElement('style'); st.id = 'pp-css'; st.textContent = CSS; (document.head || document.documentElement).appendChild(st) })()
+  // Any PAAAWS Arcade game = one block of happiness (+20), once every 10 minutes. Saved straight away.
+  window.addEventListener('paaaws-game', function () {
+    try {
+      if (!isOpen) reload()
+      var p = G.pet; if (!p || p.dead || !p.hatchedAt) return
+      advance(gameNow())
+      if (p.dead || p.lightsOff) return
+      if (!cooldown(p, 'game', 10)) return
+      if (p.happy < 60) cared(p)
+      p.happy += 20; p.energy -= 8; p.full -= 3; clamp(p); setClock(); save()
+      var msg = p.name + ' loves playing with you! +Happy 🐾'
+      if (window.paaawsToast) window.paaawsToast(msg); else toast(msg)
+    } catch (e) {}
+  })
   // Brightness pop-up (sun button on the home screen): tap outside the slider to close it
   document.addEventListener('click', function (e) {
     if (!document.body.classList.contains('bright-open')) return
