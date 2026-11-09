@@ -229,6 +229,7 @@
     '#pp .shade{position:absolute;inset:0;background:#0009;z-index:1}#pp .bagbtn{background:#15151b;border:1.5px solid #ffc72c;color:#ffc72c;border-radius:12px;height:44px;padding:0 12px;font-weight:800;font-size:13px}' +
     '#pp .bagmsg{font-size:11px;color:#aaa;text-align:center;min-height:14px}#pp .toast{position:absolute;left:16px;right:16px;bottom:96px;background:#ffc72c;color:#111;border-radius:12px;padding:12px;font-weight:700;text-align:center;z-index:5}' +
     '#pp .scroll{flex:1;overflow:auto;padding-bottom:16px}#pp .alb{display:flex;gap:12px;align-items:center;margin:8px 16px;padding:12px;border-radius:14px;background:linear-gradient(135deg,#2a1e03,#121216);border:1.5px solid #ffc72c}' +
+    '#pp .sheet{top:auto!important;inset:auto 0 0 0;display:block!important;align-items:initial}#pp .btn{height:auto!important;min-height:52px;flex:none!important;display:flex!important;align-items:center;justify-content:center;text-align:center;white-space:normal;font-size:16px!important;box-shadow:none;gap:6px}#pp .btn span{font-size:inherit}#pp .toast{border:0!important;box-shadow:0 8px 24px #0009}#pp .card{display:block!important;gap:0}#pp .row{flex-direction:row!important}#pp .bar{height:7px!important}' +
     '.pets-tile{display:flex;align-items:center;gap:12px;width:100%;margin:10px 0 4px;padding:14px 16px;border-radius:16px;border:2px solid #ffc72c;background:linear-gradient(90deg,#2a1e03,#120d02);color:#fff;text-align:left;box-shadow:0 0 18px #ffc72c55}' +
     '.pets-tile .pets-tile-icon{font-size:30px}.pets-tile strong{color:#ffc72c;font-size:18px;display:block}.pets-tile small{color:#ddd;font-size:12px}'
   var root = null, isOpen = false, screen = 'home', sheet = null, onb = { sex: 'girl', name: 'Shazalino' }, anim = null, frameI = 0, temp = null, toastT = null
@@ -391,8 +392,9 @@
       var u = URL.createObjectURL(blob), l = document.createElement('a'); l.href = u; l.download = 'paaaws-pets-backup.json'; l.click(); setTimeout(function () { URL.revokeObjectURL(u) }, 2000); return
     }
     if (a === 'delete') { if (confirm('Delete your pet? This cannot be undone.')) { G.pet = null; save(true); go('welcome') } return }
-    if (!p || p.dead || !p.hatchedAt) return
+    if (!p || p.dead) return
     sheet = null
+    if (!p.hatchedAt) { render(); return toast('Wait for the egg to hatch first! 🥚') }
     if (a === 'meal') { if (!cooldown(p, 'meal', 45)) return toast(p.name + ' is still full from the last meal.'); if (p.full < 80) cared(p); p.full += 35; clamp(p); save(); return show('eat', 'Yum! 😋') }
     if (a === 'snack') {
       if (!cooldown(p, 'snack', 30)) return toast('One snack every 30 minutes.')
